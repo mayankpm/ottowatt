@@ -16,38 +16,34 @@ export default function Home() {
     formData.append("file", file);
 
     try {
-      // Make the request — no matter what status code comes back,
-      // we will try to read it as JSON.
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
 
-      // Attempt to parse JSON even if status is 500.
+      // Even if the server returns 4xx/5xx, we want to parse the body:
       let data;
       try {
         data = await response.json();
-      } catch (parseError) {
-        console.error("Could not parse JSON:", parseError);
-        // Fallback if server didn't return valid JSON
-        data = { extracted_text: "", structured_text: "" };
+      } catch (jsonError) {
+        console.error("Failed to parse JSON:", jsonError);
+        // Fallback if no valid JSON came back
+        data = { extracted_text: "", structured_text: "", error: "No valid JSON" };
       }
 
-      // We store whatever came back, ignoring errors
       setResult(data);
-
-    } catch (fetchError) {
-      // This only triggers if fetch() itself fails (network error, etc.)
-      console.error("Fetch error:", fetchError);
-      // We do NOT set any error state, so the UI remains silent.
-      setResult({ extracted_text: "", structured_text: "" });
+    } catch (error) {
+      // This catch only triggers if fetch() itself fails (e.g., network down)
+      console.error("Fetch error:", error);
+      setResult({ extracted_text: "", structured_text: "", error: String(error) });
     } finally {
       setLoading(false);
     }
   };
 
-  // Safely transform structured_text (if any)
+  // Safely handle missing or empty strings for structured_text
   const safeStructuredText = (result?.structured_text ?? "")
+    // Optionally transform the text if it's not empty:
     .replace(/^### (.*?)$/gm, "<h3>$1</h3>")
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/^## (.*?)$/gm, "<h2>$1</h2>")
@@ -70,7 +66,12 @@ export default function Home() {
 
       {result && (
         <div className="results">
-          {/* No explicit "Error" UI. We just won't show anything if server fails. */}
+          {result.error && (
+            <div className="errorBox">
+              <p style={{ color: "red" }}>Error: {result.error}</p>
+            </div>
+          )}
+
           <div className="resultBox">
             <h2>Raw Text</h2>
             <pre>{result.extracted_text}</pre>
@@ -79,7 +80,9 @@ export default function Home() {
           <div className="resultBox">
             <h2>Structured Text</h2>
             <div
-              dangerouslySetInnerHTML={{ __html: safeStructuredText }}
+              dangerouslySetInnerHTML={{
+                __html: safeStructuredText,
+              }}
             />
           </div>
         </div>
