@@ -5,9 +5,26 @@ import "./Page.css";
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [apiKey, setApiKey] = useState<string>("");
+  const [envFile, setEnvFile] = useState<File | null>(null);
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [useEnv, setUseEnv] = useState<boolean>(false);
+
+  const handleEnvFile = async (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      const lines = content.split("\n");
+      const apiKeyLine = lines.find((line) => line.startsWith("API_KEY="));
+      if (apiKeyLine) {
+        const [, key] = apiKeyLine.split("=");
+        setApiKey(key.trim());
+      } else {
+        alert("No valid API_KEY found in the .env file");
+        setEnvFile(null);
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,56 +33,54 @@ export default function Home() {
       return;
     }
     setLoading(true);
+
     const formData = new FormData();
     formData.append("file", file);
-    if (!useEnv && apiKey) formData.append("api_key", apiKey);
+    if (apiKey) {
+      formData.append("api_key", apiKey);
+    }
 
     try {
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
-      let data;
-      try {
-        data = await response.json();
-      } catch {
-        data = { extracted_text: "", structured_text: "", error: "No valid JSON returned" };
-      }
+      const data = await response.json();
       setResult(data);
     } catch (error) {
-      setResult({ extracted_text: "", structured_text: "", error: String(error) });
+      setResult({ error: "Failed to process the file." });
     } finally {
       setLoading(false);
     }
   };
 
-  const safeStructuredText = (result?.structured_text ?? "")
-    .replace(/^### (.*?)$/gm, "<h3>$1</h3>")
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/^## (.*?)$/gm, "<h2>$1</h2>")
-    .replace(/^# (.*?)$/gm, "<h1>$1</h1>")
-    .replace(/---/g, "<hr>");
-
   return (
     <main className="main">
       <form onSubmit={handleSubmit} className="form">
-        <label>
-          <input
-            type="checkbox"
-            checked={useEnv}
-            onChange={() => setUseEnv(!useEnv)}
-          />
-          Use .env file
-        </label>
-        {!useEnv && (
-          <input
-            type="password"
-            placeholder="Enter your OpenAI API key (optional)"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            className="apiKeyInput"
-          />
-        )}
+        <div className="apiKeyInputContainer">
+          <span>Attach a .env file or enter your API key manually:</span>
+          <div className="inputOptions">
+            <input
+              type="file"
+              accept=".env"
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                setEnvFile(file);
+                if (file) handleEnvFile(file);
+              }}
+              className="fileInput"
+            />
+            <span>or</span>
+            <input
+              type="password"
+              placeholder="Enter your API key"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              disabled={!!envFile}
+              className="passwordInput"
+            />
+          </div>
+        </div>
         <input
           type="file"
           accept=".pdf"
@@ -77,8 +92,8 @@ export default function Home() {
         </button>
       </form>
 
-      {loading && <p>Please wait for a few seconds</p>}
-      
+      {loading && <p>Please wait for a few seconds...</p>}
+
       {result && (
         <div className="results">
           {result.error && (
@@ -94,11 +109,7 @@ export default function Home() {
 
           <div className="resultBox">
             <h2>Structured Text</h2>
-            <div
-              dangerouslySetInnerHTML={{
-                __html: safeStructuredText,
-              }}
-            />
+            <div dangerouslySetInnerHTML={{ __html: result.structured_text }} />
           </div>
         </div>
       )}
