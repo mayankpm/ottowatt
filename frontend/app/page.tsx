@@ -44,18 +44,11 @@ export default function Home() {
   };
 
   const safeStructuredText = (result?.structured_text ?? "")
-  .replace(/^### (.*?)$/gm, "<h3>$1</h3>")
-  .replace(/^## (.*?)$/gm, "<h2>$1</h2>")
-  .replace(/^# (.*?)$/gm, "<h1>$1</h1>")
-  .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-  .replace(/---/g, "<hr>")
-  .replace(/^\* (.*?)$/gm, "<ul><li>$1</li></ul>")
-  .replace(/^\d+\. (.*?)$/gm, "<ol><li>$1</li></ol>")
-  .replace(/`(.*?)`/g, "<code>$1</code>")
-  .replace(/^> (.*?)$/gm, "<blockquote>$1</blockquote>")
-  .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
-  .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" />');
-
+    .replace(/^### (.*?)$/gm, "<h3>$1</h3>")
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/^## (.*?)$/gm, "<h2>$1</h2>")
+    .replace(/^# (.*?)$/gm, "<h1>$1</h1>")
+    .replace(/---/g, "<hr>");
 
   return (
     <main className="main">
