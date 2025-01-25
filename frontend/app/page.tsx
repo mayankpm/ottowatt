@@ -9,7 +9,7 @@ export default function Home() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleEnvFile = async (file: File) => {
+  const handleEnvFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target?.result as string;
@@ -17,12 +17,7 @@ export default function Home() {
       const apiKeyLine = lines.find((line) => line.startsWith("OPENAI_API_KEY="));
       if (apiKeyLine) {
         const [, key] = apiKeyLine.split("=");
-        if (key) {
-          setApiKey(key.trim());
-        } else {
-          alert("OPENAI_API_KEY value is missing in the .env file");
-          setEnvFile(null);
-        }
+        setApiKey(key.trim());
       } else {
         alert("No valid OPENAI_API_KEY found in the .env file");
         setEnvFile(null);
@@ -30,7 +25,6 @@ export default function Home() {
     };
     reader.readAsText(file);
   };
-  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,34 +32,47 @@ export default function Home() {
       alert("Please upload a file.");
       return;
     }
-    setLoading(true);
 
+    setLoading(true);
     const formData = new FormData();
     formData.append("file", file);
-    if (apiKey) {
-      formData.append("api_key", apiKey);
-    }
+    if (apiKey) formData.append("api_key", apiKey);
 
     try {
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
-      const data = await response.json();
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error("Failed to parse JSON:", jsonError);
+        data = { extracted_text: "", structured_text: "", error: "No valid JSON returned" };
+      }
+
       setResult(data);
     } catch (error) {
-      setResult({ error: "Failed to process the file." });
+      console.error("Fetch error:", error);
+      setResult({ extracted_text: "", structured_text: "", error: String(error) });
     } finally {
       setLoading(false);
     }
   };
 
+  const safeStructuredText = (result?.structured_text ?? "")
+    .replace(/^### (.*?)$/gm, "<h3>$1</h3>")
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/^## (.*?)$/gm, "<h2>$1</h2>")
+    .replace(/^# (.*?)$/gm, "<h1>$1</h1>")
+    .replace(/---/g, "<hr>");
+
   return (
     <main className="main">
       <form onSubmit={handleSubmit} className="form">
         <div className="apiKeyInputContainer">
-          <span>Attach a .env file with OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          or enter your API key manually:</span>
+          <span>Attach a .env file or enter your API key manually:</span>
           <div className="inputOptions">
             <input
               type="file"
@@ -80,11 +87,11 @@ export default function Home() {
             <span>or</span>
             <input
               type="password"
-              placeholder="Enter your API key"
+              placeholder="Enter your OpenAI API key"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               disabled={!!envFile}
-              className="passwordInput"
+              className="apiKeyInput"
             />
           </div>
         </div>
@@ -95,11 +102,9 @@ export default function Home() {
           className="fileInput"
         />
         <button type="submit" disabled={!file || loading} className="button">
-          Submit
+          {loading ? "Processing..." : "Upload and Process"}
         </button>
       </form>
-
-      {loading && <p>Please wait for a few seconds...</p>}
 
       {result && (
         <div className="results">
@@ -116,7 +121,11 @@ export default function Home() {
 
           <div className="resultBox">
             <h2>Structured Text</h2>
-            <div dangerouslySetInnerHTML={{ __html: result.structured_text }} />
+            <div
+              dangerouslySetInnerHTML={{
+                __html: safeStructuredText,
+              }}
+            />
           </div>
         </div>
       )}
