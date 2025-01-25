@@ -4,9 +4,10 @@ import "./Page.css";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
-  const [apiKey, setApiKey] = useState<string>(""); // For user-provided API key
+  const [apiKey, setApiKey] = useState<string>("");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [useEnv, setUseEnv] = useState<boolean>(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -14,29 +15,24 @@ export default function Home() {
       alert("Please upload a file.");
       return;
     }
-
     setLoading(true);
     const formData = new FormData();
     formData.append("file", file);
-    if (apiKey) formData.append("api_key", apiKey); // Attach API key if provided
+    if (!useEnv && apiKey) formData.append("api_key", apiKey);
 
     try {
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
-
       let data;
       try {
         data = await response.json();
-      } catch (jsonError) {
-        console.error("Failed to parse JSON:", jsonError);
+      } catch {
         data = { extracted_text: "", structured_text: "", error: "No valid JSON returned" };
       }
-
       setResult(data);
     } catch (error) {
-      console.error("Fetch error:", error);
       setResult({ extracted_text: "", structured_text: "", error: String(error) });
     } finally {
       setLoading(false);
@@ -53,13 +49,23 @@ export default function Home() {
   return (
     <main className="main">
       <form onSubmit={handleSubmit} className="form">
-        <input
-          type="text"
-          placeholder="Enter your OpenAI API key (optional)"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          className="apiKeyInput"
-        />
+        <label>
+          <input
+            type="checkbox"
+            checked={useEnv}
+            onChange={() => setUseEnv(!useEnv)}
+          />
+          Use .env file
+        </label>
+        {!useEnv && (
+          <input
+            type="password"
+            placeholder="Enter your OpenAI API key (optional)"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            className="apiKeyInput"
+          />
+        )}
         <input
           type="file"
           accept=".pdf"
@@ -67,10 +73,12 @@ export default function Home() {
           className="fileInput"
         />
         <button type="submit" disabled={!file || loading} className="button">
-          {loading ? "Processing..." : "Upload and Process"}
+          Submit
         </button>
       </form>
 
+      {loading && <p>Please wait for a few seconds</p>}
+      
       {result && (
         <div className="results">
           {result.error && (
