@@ -4,16 +4,21 @@ import "./Page.css";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
+  const [apiKey, setApiKey] = useState<string>(""); // For user-provided API key
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) return;
+    if (!file) {
+      alert("Please upload a file.");
+      return;
+    }
 
     setLoading(true);
     const formData = new FormData();
     formData.append("file", file);
+    if (apiKey) formData.append("api_key", apiKey); // Attach API key if provided
 
     try {
       const response = await fetch("/api/upload", {
@@ -21,19 +26,16 @@ export default function Home() {
         body: formData,
       });
 
-      // Even if the server returns 4xx/5xx, we want to parse the body:
       let data;
       try {
         data = await response.json();
       } catch (jsonError) {
         console.error("Failed to parse JSON:", jsonError);
-        // Fallback if no valid JSON came back
-        data = { extracted_text: "", structured_text: "", error: "No valid JSON" };
+        data = { extracted_text: "", structured_text: "", error: "No valid JSON returned" };
       }
 
       setResult(data);
     } catch (error) {
-      // This catch only triggers if fetch() itself fails (e.g., network down)
       console.error("Fetch error:", error);
       setResult({ extracted_text: "", structured_text: "", error: String(error) });
     } finally {
@@ -41,9 +43,7 @@ export default function Home() {
     }
   };
 
-  // Safely handle missing or empty strings for structured_text
   const safeStructuredText = (result?.structured_text ?? "")
-    // Optionally transform the text if it's not empty:
     .replace(/^### (.*?)$/gm, "<h3>$1</h3>")
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/^## (.*?)$/gm, "<h2>$1</h2>")
@@ -53,6 +53,13 @@ export default function Home() {
   return (
     <main className="main">
       <form onSubmit={handleSubmit} className="form">
+        <input
+          type="text"
+          placeholder="Enter your OpenAI API key (optional)"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          className="apiKeyInput"
+        />
         <input
           type="file"
           accept=".pdf"

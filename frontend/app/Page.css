@@ -6,9 +6,18 @@
 
 .form {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-bottom: 2rem;
   align-items: center;
+}
+
+.apiKeyInput {
+  padding: 0.5rem;
+  font-size: 1rem;
+  flex: 1;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
 .fileInput {
@@ -47,7 +56,7 @@
   border: 1px solid #eaeaea;
   border-radius: 8px;
   background-color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   font-size: 0.9rem;
   line-height: 1.4;
   height: 100%;
