@@ -14,17 +14,23 @@ export default function Home() {
     reader.onload = (e) => {
       const content = e.target?.result as string;
       const lines = content.split("\n");
-      const apiKeyLine = lines.find((line) => line.startsWith("API_KEY="));
+      const apiKeyLine = lines.find((line) => line.startsWith("OPENAI_API_KEY="));
       if (apiKeyLine) {
         const [, key] = apiKeyLine.split("=");
-        setApiKey(key.trim());
+        if (key) {
+          setApiKey(key.trim());
+        } else {
+          alert("OPENAI_API_KEY value is missing in the .env file");
+          setEnvFile(null);
+        }
       } else {
-        alert("No valid API_KEY found in the .env file");
+        alert("No valid OPENAI_API_KEY found in the .env file");
         setEnvFile(null);
       }
     };
     reader.readAsText(file);
   };
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +64,8 @@ export default function Home() {
     <main className="main">
       <form onSubmit={handleSubmit} className="form">
         <div className="apiKeyInputContainer">
-          <span>Attach a .env file or enter your API key manually:</span>
+          <span>Attach a .env file with OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          or enter your API key manually:</span>
           <div className="inputOptions">
             <input
               type="file"
